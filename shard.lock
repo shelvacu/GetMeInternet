@@ -1,0 +1,6 @@
+version: 1.0
+shards:
+  tuntap:
+    github: Papierkorb/tuntap
+    commit: f0b0b7da9bdfdf4e12b114cb164e6c55753b7f57
+

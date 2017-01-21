@@ -1,0 +1,19 @@
+name: GetMeInternet
+version: 0.1.0
+
+authors:
+  - Shelvacu <shelvacu@gmail.com>
+
+targets:
+  client:
+    main: src/client.cr
+  server:
+    main: src/server.cr
+
+dependencies:
+  tuntap:
+    github: Papierkorb/tuntap
+
+crystal: 0.20.3
+
+license: AGPL
