@@ -1,15 +1,18 @@
-require "./GetMeInternet/*"
 require "socket"
 require "../lib/tuntap/src/tuntap.cr"
+require "./sodium"
+require "./GetMeInternet/*"
 
 module GetMeInternet
   PORT = 5431
   SERVER_IP = "10.54.31.1"
   CLIENT_IP = "10.54.31.2"
 
+  NONCE_LENGTH = Sodium::SecretBox::NONCE_BYTES
+
   extend self
   
-  def run(server_address : String? = nil)
+  def run( config : Config, server_address : String? = nil)
     if server_address.nil?
       server_mode = true
       puts "Waiting for connection"
@@ -41,10 +44,14 @@ module GetMeInternet
 
     spawn do
       begin
-        loop do
-          packet = Bytes.new socket.read_bytes(UInt32)
-          socket.read_fully packet
+        loop do #recv a packet from the pipe, put into tun device
+          nonce = Bytes.new(NONCE_LENGTH)
+          socket.read_fully nonce
+          enc_packet = Bytes.new socket.read_bytes(UInt32)
+          socket.read_fully enc_packet
 
+          packet = Sodium::SecretBox.decrypt(enc_packet, nonce, config.key!)
+          
           info = Tuntap::IpPacket.new(frame: packet, has_pi: false)
 
           puts "-> #{info.size}B #{info.source_address} >> #{info.destination_address}"
@@ -59,13 +66,16 @@ module GetMeInternet
 
     spawn do
       begin
-        loop do
+        loop do #recv a packet from the tun device, put into the pipe
           packet = dev.read_packet
 
           puts "<- #{packet.size}B #{packet.source_address} >> #{packet.destination_address}"
 
+          enc_packet, nonce = Sodium::SecretBox.encrypt(packet.frame, config.key!)
+
+          socket.write nonce
           socket.write_bytes packet.size.to_u32
-          socket.write packet.frame
+          socket.write enc_packet
         end
       end
     end

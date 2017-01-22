@@ -1,5 +1,5 @@
 require "./GetMeInternet"
 
-GetMeInternet.run()
+GetMeInternet.run(GetMeInternet::Config.autoload)
 
 sleep

@@ -32,6 +32,12 @@ module GetMeInternet
       end
     end
 
+    def key!
+      tmp = key
+      raise "Key was nil, how dare you!" if tmp.nil?
+      return tmp
+    end
+
     def key=(val : Bytes)
       @key = nil
       @hexkey = val.hexstring
