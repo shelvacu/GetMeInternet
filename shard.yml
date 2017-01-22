@@ -9,6 +9,8 @@ targets:
     main: src/client.cr
   server:
     main: src/server.cr
+  util:
+    main: src/util.cr
 
 dependencies:
   tuntap:
