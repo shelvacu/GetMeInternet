@@ -22,6 +22,8 @@ module GetMeInternet
       socket = TCPSocket.new(server_address, PORT)
     end
 
+    config.key!
+
     dev = Tuntap::Device.open flags: LibC::IfReqFlags::Tun | LibC::IfReqFlags::NoPi
     dev.up!
 
@@ -50,7 +52,12 @@ module GetMeInternet
           enc_packet = Bytes.new socket.read_bytes(UInt32)
           socket.read_fully enc_packet
 
+          puts nonce.hexstring
+          puts enc_packet.size
+          
           packet = Sodium::SecretBox.decrypt(enc_packet, nonce, config.key!)
+
+          puts packet.hexdump
           
           info = Tuntap::IpPacket.new(frame: packet, has_pi: false)
 
@@ -73,8 +80,11 @@ module GetMeInternet
 
           enc_packet, nonce = Sodium::SecretBox.encrypt(packet.frame, config.key!)
 
+          puts nonce.hexstring
+          puts enc_packet.size
+          
           socket.write nonce
-          socket.write_bytes packet.size.to_u32
+          socket.write_bytes enc_packet.size.to_u32
           socket.write enc_packet
         end
       end
