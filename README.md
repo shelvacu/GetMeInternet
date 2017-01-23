@@ -4,6 +4,8 @@ Designed to figure out how to get a connection to the internet when using a rest
 
 Inspired by [iodine](http://code.kryo.se/iodine/) (ip over DNS) and [hans](http://code.gerade.org/hans/) (ip over icmp ping)
 
+http://sites.inka.de/bigred/devel/tcp-tcp.html
+
 ## Installation
 
 TODO: Write installation instructions here

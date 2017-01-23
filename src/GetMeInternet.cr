@@ -12,7 +12,7 @@ module GetMeInternet
 
   extend self
   
-  def run( config : Config, server_address : String? = nil)
+  def run(config : Config, server_address : String? = nil)
     if server_address.nil?
       server_mode = true
       puts "Waiting for connection"
