@@ -1,3 +1,5 @@
+require "./mabf"
+
 module GetMeInternet
   class Packet
     # Packet format: (network endian)
@@ -9,16 +11,13 @@ module GetMeInternet
     #     to make a request before data can be set serv -> client.
     #     Also useful for when the server has nothing to send back.
     #   * Stream data
-    # * Packet ID - sequential, used to prevent replay attacks. (UInt32)
-    # * Data length (UInt32)
+    # * Packet ID - sequential, used to prevent replay attacks. (UInt64)
+    # * Data length (UInt16)
     # * Data (lots of bytes)
     #
-    # Header length is therefor 9 bytes
+    # Header length is therefor 13 bytes
 
-    HEADER_BYTE_LENGTH = 9
-
-    MABF = IO::ByteFormat::NetworkEndian
-    # Short for My Awesome Byte Format
+    HEADER_BYTE_LENGTH = 13
 
     enum PacketType
       Normal
@@ -28,15 +27,17 @@ module GetMeInternet
     end
 
     def self.from_io(io : IO, fuck_your_stupid_byte_format_I_dont_care = nil)
+      #TODO: always return InvalidPacketException instead of a random exception
       pt = PacketType.from_value io.read_bytes(UInt8, MABF)
-      seq_id = io.read_bytes(UInt32, MABF)
-      data_len = io.read_bytes(UInt32, MABF)
+      seq_id = io.read_bytes(UInt64, MABF)
+      data_len = io.read_bytes(UInt16, MABF)
       data = Bytes.new(data_len)
       io.read_fully(data)
       self.new(pt, seq_id, data)
     end
     
-    def initialize(@packet_type : PacketType, @seq_id : UInt32, @data : Bytes)
+    def initialize(@packet_type : PacketType, @seq_id : UInt64, @data : Bytes)
+      raise ArgumentError.new("data is too big") if @data.size > 65535
     end
 
     def ==(other : Packet)
@@ -48,7 +49,7 @@ module GetMeInternet
     def to_io(io : IO, fuck_your_stupid_byte_format_I_dont_care = nil)
       io.write_bytes(@packet_type.value.to_u8, MABF)
       io.write_bytes(@seq_id, MABF)
-      io.write_bytes(@data.size.to_u32, MABF)
+      io.write_bytes(@data.size.to_u16, MABF)
       io.write(@data)
     end
 
