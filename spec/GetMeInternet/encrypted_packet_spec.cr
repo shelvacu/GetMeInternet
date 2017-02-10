@@ -1,11 +1,10 @@
 describe GetMeInternet::EncryptedPacket do
   it "survives transport" do
-    pkt = GetMeInternet::Packet.new(
-      GetMeInternet::Packet::PacketType::Ping,
-      12345u64,
-      Bytes[72, 101, 108, 108, 111]
+    nonce = Sodium::SecretBox.secure_random_nonce
+    enc_pkt = GetMeInternet::EncryptedPacket.new(
+      Bytes[1,2,3,7,3,5,2],
+      Sodium::SecretBox.secure_random_nonce
     )
-    enc_pkt = GetMeInternet::EncryptedPacket.encrypt(pkt, Sodium::SecretBox.secure_random_key)
     io = IO::Memory.new
     enc_pkt.to_io(io)
     io.rewind

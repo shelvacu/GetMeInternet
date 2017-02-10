@@ -17,6 +17,7 @@ module Sodium
              BOX_ZERO_BYTES == LibSodium.crypto_secretbox_boxzerobytes
         raise "Sanity check failed!"
       end
+      return true
     end
 
     def encrypt(message : Bytes, key : Bytes)
@@ -24,7 +25,7 @@ module Sodium
       padded_message_length = message.size + ZERO_BYTES
       padded_message = Bytes.new(padded_message_length)
       message.copy_to padded_message + ZERO_BYTES
-      nonce = SecureRandom.random_bytes(NONCE_BYTES)
+      nonce = secure_random_nonce
       ciphertext = Bytes.new(padded_message.size)
       LibSodium.crypto_secretbox(ciphertext, padded_message, padded_message.size, nonce, key)
       return ciphertext, nonce
@@ -47,6 +48,10 @@ module Sodium
       return SecureRandom.random_bytes(KEY_BYTES)
     end
 
+    def secure_random_nonce
+      return SecureRandom.random_bytes(NONCE_BYTES)
+    end
+    
     private def validate_key(key : Bytes)
       raise ArgumentError.new("Key must be KEY_BYTES(#{KEY_BYTES}) long") unless key.size == KEY_BYTES
     end

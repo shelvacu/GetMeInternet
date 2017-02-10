@@ -15,9 +15,9 @@ module GetMeInternet
     # * Data length (UInt16)
     # * Data (lots of bytes)
     #
-    # Header length is therefor 13 bytes
+    # Header length is therefor 11 bytes
 
-    HEADER_BYTE_LENGTH = 13
+    HEADER_BYTE_LENGTH = 11
 
     enum PacketType
       Normal
@@ -26,8 +26,8 @@ module GetMeInternet
       Stream #Not currently used
     end
 
-    def self.from_io(io : IO, fuck_your_stupid_byte_format_I_dont_care = nil)
-      #TODO: always return InvalidPacketException instead of a random exception
+    def self.from_io(io : IO, dont_care = nil)
+      #TODO: always return InvalidPacketException
       pt = PacketType.from_value io.read_bytes(UInt8, MABF)
       seq_id = io.read_bytes(UInt64, MABF)
       data_len = io.read_bytes(UInt16, MABF)
@@ -36,18 +36,20 @@ module GetMeInternet
       self.new(pt, seq_id, data)
     end
     
-    def initialize(@packet_type : PacketType, @seq_id : UInt64, @data : Bytes)
+    def initialize(@type : PacketType,
+                   @seq_id : UInt64,
+                   @data : Bytes)
       raise ArgumentError.new("data is too big") if @data.size > 65535
     end
 
     def ==(other : Packet)
-      return packet_type == other.packet_type &&
+      return type == other.type &&
              seq_id == other.seq_id &&
              data == other.data
     end
     
-    def to_io(io : IO, fuck_your_stupid_byte_format_I_dont_care = nil)
-      io.write_bytes(@packet_type.value.to_u8, MABF)
+    def to_io(io : IO, dont_care = nil)
+      io.write_bytes(@type.value.to_u8, MABF)
       io.write_bytes(@seq_id, MABF)
       io.write_bytes(@data.size.to_u16, MABF)
       io.write(@data)
@@ -57,7 +59,7 @@ module GetMeInternet
       HEADER_BYTE_LENGTH + @data.size
     end
 
-    getter :packet_type
+    getter :type
     getter :seq_id
     getter :data
   end

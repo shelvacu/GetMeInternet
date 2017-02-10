@@ -5,13 +5,13 @@ describe GetMeInternet::Packet do
     pkt_data = Bytes[
       0x00, #type (Normal)
       0xde,0xad,0xbe,0xef,0xde,0xad,0xbe,0xef, #Packet ID (DEADBEEFDEADBEEF)
-      0, 0, 0, 5, # Data length (5)
+      0, 5, # Data length (5)
       72, 101, 108, 108, 111 # Data ("Hello")
     ]
     io = IO::Memory.new(pkt_data, writeable: false)
     pkt = GetMeInternet::Packet.from_io(io)
     pkt.size.should eq pkt_data.size
-    pkt.packet_type.should eq GetMeInternet::Packet::PacketType::Normal
+    pkt.type.should eq GetMeInternet::Packet::PacketType::Normal
     pkt.seq_id.should eq 0xDEADBEEFDEADBEEF_u64
     pkt.data.should eq Bytes[72, 101, 108, 108, 111]
   end
@@ -27,7 +27,7 @@ describe GetMeInternet::Packet do
     expected = Bytes[
       0x01,
       0,0,0,0,0,0,48,57,
-      0,0, 0, 5,
+      0, 5,
       72, 101, 108, 108, 111
     ]
     outb.should eq expected

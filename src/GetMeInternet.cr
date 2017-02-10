@@ -16,15 +16,28 @@ module GetMeInternet
     if server_address.nil?
       server_mode = true
       puts "Waiting for connection"
-      socket = TCPServer.new("0.0.0.0", PORT).accept
+      #socket = TCPServer.new("0.0.0.0", PORT).accept
+      trans = TCPTransportServer.new(
+        {
+          "listen_ports" => "5431"
+        }
+      )
     else
       server_mode = false
-      socket = TCPSocket.new(server_address, PORT)
+      #socket = TCPSocket.new(server_address, PORT)
+      trans = TCPTransportClient.new(
+        {
+          "server_addr" => server_address,
+          "port" => "5431"
+        }
+      )
     end
 
     config.key!
 
-    dev = Tuntap::Device.open flags: LibC::IfReqFlags::Tun | LibC::IfReqFlags::NoPi
+    dev = Tuntap::Device.open(
+      flags: LibC::IfReqFlags::Tun | LibC::IfReqFlags::NoPi
+    )
     dev.up!
 
     my_ip = server_mode ? SERVER_IP : CLIENT_IP
@@ -44,49 +57,56 @@ module GetMeInternet
     puts "  Remote IP address: #{remote_ip}"
     puts "Now tunneling data. Hit Ctrl-C to stop."
 
-    spawn do
+    sequence_inc = 1u64
+
+    last_route : UInt64? = nil
+    
+    loop do
+      puts "loop iteration"
       begin
-        loop do #recv a packet from the pipe, put into tun device
-          nonce = Bytes.new(NONCE_LENGTH)
-          socket.read_fully nonce
-          enc_packet = Bytes.new socket.read_bytes(UInt32)
-          socket.read_fully enc_packet
-
-          puts nonce.hexstring
-          puts enc_packet.size
+        trans.recv_packets.each do |enc_pkt, route_id|
+          last_route = route_id
           
-          packet = Sodium::SecretBox.decrypt(enc_packet, nonce, config.key!)
+          enc_pkt.decrypt(config.key!).each do |packet|
+            #TODO: verify sequence id to prevent duplicates.
+            case packet.type
+            when GetMeInternet::Packet::PacketType::Normal
+              info = Tuntap::IpPacket.new(frame: packet.data, has_pi: false)
 
-          puts packet.hexdump
-          
-          info = Tuntap::IpPacket.new(frame: packet, has_pi: false)
+              puts "-> #{info.size}B #{info.source_address} >> #{info.destination_address}"
 
-          puts "-> #{info.size}B #{info.source_address} >> #{info.destination_address}"
-
-          dev.write packet
+              dev.write packet.data
+            else
+              #TODO: Deal with other packet types
+            end
+          end
         end
+
+        #Can't send packets if we don't have a route to send them to.
+        if !last_route.nil?
+          ip_packet = dev.read_packet
+
+          puts "<- #{ip_packet.size}B #{ip_packet.source_address} >> #{ip_packet.destination_address}"
+          
+          gmi_packet = Packet.new(
+            Packet::PacketType::Normal,
+            sequence_inc += 1,
+            ip_packet.frame
+          )
+
+          enc_packet = EncryptedPacket.encrypt(
+            gmi_packet,
+            config.key!
+          )
+
+          puts "c"
+
+          trans.send_packets([enc_packet], last_route)
+        end
+        Fiber.yield
       rescue err
         puts err
         exit
-      end
-    end
-
-    spawn do
-      begin
-        loop do #recv a packet from the tun device, put into the pipe
-          packet = dev.read_packet
-
-          puts "<- #{packet.size}B #{packet.source_address} >> #{packet.destination_address}"
-
-          enc_packet, nonce = Sodium::SecretBox.encrypt(packet.frame, config.key!)
-
-          puts nonce.hexstring
-          puts enc_packet.size
-          
-          socket.write nonce
-          socket.write_bytes enc_packet.size.to_u32
-          socket.write enc_packet
-        end
       end
     end
   end

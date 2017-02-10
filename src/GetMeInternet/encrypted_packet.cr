@@ -17,8 +17,8 @@ module GetMeInternet
     end
     
     def self.encrypt(pkts : Array(Packet), key : Bytes)
-      size = pkts.map(&.size).sum
-      plaintext = Bytes.new(size)
+      size_sum = pkts.map(&.size).sum
+      plaintext = Bytes.new(size_sum)
       io = IO::Memory.new(plaintext)
       pkts.each do |pkt|
         pkt.to_io(io)
@@ -37,7 +37,7 @@ module GetMeInternet
     end
       
     def initialize(@ciphertext : Bytes, @nonce : Bytes)
-      raise ArgumentError.new unless @nonce.size == NONCE_LENGTH
+      raise ArgumentError.new("Nonce is not the correct length, size is #{@nonce.size}, expected #{NONCE_LENGTH}") unless @nonce.size == NONCE_LENGTH
     end
 
     def decrypt(key : Bytes) : Array(Packet)
@@ -52,17 +52,13 @@ module GetMeInternet
 
     def to_io(io, dont_care = nil)
       io.write(@nonce)
-      io.write_bytes(@ciphertext.size.to_u32)
+      io.write_bytes(@ciphertext.size.to_u32, MABF)
       io.write(@ciphertext)
     end
 
     def ==(other : EncryptedPacket)
       return @nonce == other.nonce &&
         @ciphertext == other.ciphertext
-    end
-
-    def ==(other : Object)
-      return false
     end
   end
 end
