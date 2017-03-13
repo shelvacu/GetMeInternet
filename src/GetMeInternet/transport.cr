@@ -24,7 +24,7 @@ module GetMeInternet
 
     # Receive some packets. May return an empty array.
     # The second element in the tuple is the 'route', which in the
-    # case of TCP is which client to send to  
+    # case of TCP is which client to send to
     abstract def recv_packets : Array(Tuple(EncryptedPacket,UInt64))
 
     # If the transport needs to do something every tick (eg TCP
@@ -32,10 +32,14 @@ module GetMeInternet
     def tick
       return nil
     end
-    
+
     # Send some packets along the transport.
     abstract def send_packets(pkts : Array(EncryptedPacket),
                               route : UInt64)
+
+    def send_packet(pkt : EncryptedPacket, route : UInt64)
+      send_packets([pkt], route)
+    end
 
     # recieve packets, using a buffer to deal with only recieving
     # parts of a packet at a time.
@@ -47,32 +51,36 @@ module GetMeInternet
                   )
       res = [] of Tuple(EncryptedPacket, UInt64)
       len_read = io.read(bigbuff)
-
+      # TODO: Make sure this properly deals with recieving a packet and a half from a single read
+      if len_read > 0
+        #puts "read #{len_read} bytes"
+      end
       newbuff = buff
-      
       bigbuff[0,len_read].each do |byte|
         buff << byte
       end
       if buff.size >= EncryptedPacket::HEADER_BYTE_LENGTH
-          pkt_len = EncryptedPacket::HEADER_BYTE_LENGTH
-          # TODO: no magic value
-          length_range = (NONCE_LENGTH...NONCE_LENGTH+4)
-          pkt_len += Transport.bytes_to_u32(buff[length_range])
-          if buff.size >= pkt_len
-            # This *really* feels like it should really be optimized,
-            # but premature optimization is the root of all evil.
-            io = IO::Memory.new
-            buff[0..pkt_len].each do |byte|
-              io.write_byte byte
-            end
-            io.rewind
-
-            res << {EncryptedPacket.from_io(io), route_id}
-            #TODO: Catch invalid packet exceptions
-
-            newbuff = buff[pkt_len..-1]
+        #puts "reading header"
+        pkt_len = EncryptedPacket::HEADER_BYTE_LENGTH
+        # TODO: no magic value
+        length_range = (NONCE_LENGTH...NONCE_LENGTH+4)
+        pkt_len += Transport.bytes_to_u32(buff[length_range])
+        if buff.size >= pkt_len
+          #puts "reading whole encpacket"
+          # This *really* feels like it should really be optimized,
+          # but premature optimization is the root of all evil.
+          io = IO::Memory.new
+          buff[0..pkt_len].each do |byte|
+            io.write_byte byte
           end
+          io.rewind
+
+          res << {EncryptedPacket.from_io(io), route_id}
+          #TODO: Catch invalid packet exceptions
+
+          newbuff = buff[pkt_len..-1]
         end
+      end
       return res, newbuff
     end
 

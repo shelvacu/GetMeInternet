@@ -19,8 +19,8 @@ module GetMeInternet
       @bytebuff = [] of UInt8
     end
 
-    def send_packets(pkts : Array(EncryptedPacket), id : Int)
-      raise ArgumentError.new unless id == 0
+    def send_packets(pkts : Array(EncryptedPacket), id : UInt64)
+      raise ArgumentError.new unless id == 0u64
       send_packets(pkts)
     end
     

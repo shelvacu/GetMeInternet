@@ -6,13 +6,13 @@ module GetMeInternet
 
     @bind_addr : String
     @listen_ports : Array(UInt16)
-    
+
     alias ClientData = NamedTuple(sock: TCPSocket, buff: Array(UInt8))
 
     def self.name
       return "tcp"
     end
-    
+
     def initialize(config : ConfigHash)
       lp = config["listen_ports"]?
       if (ba = config["bind_address"]?).is_a?(ConfigHash) ||
@@ -29,13 +29,13 @@ module GetMeInternet
       @clients = [] of ClientData
       @listen_ports.each do |port|
         @listeners[port] = server = TCPServer.new(@bind_addr, port)
-	spawn do
-	  while client = server.accept?
-	    client.blocking = false
-	    @clients << {sock: client, buff: [] of UInt8}
+        spawn do
+          while client = server.accept?
+            puts "Client connected"
+            @clients << {sock: client, buff: [] of UInt8}
             Fiber.yield
-	  end
-	end
+          end
+        end
       end
       @megabuff = Bytes.new(1_000_000)
     end
@@ -45,7 +45,7 @@ module GetMeInternet
       @clients.each_index do |i|
         cd = @clients[i] #client data
         buff = cd[:buff]
-	sock = cd[:sock]
+        sock = cd[:sock]
         r, newbuff = buffered_packet_recv(sock, buff, @megabuff, i.to_u64)
         res += r
         @clients[i] = {sock: sock, buff: newbuff}

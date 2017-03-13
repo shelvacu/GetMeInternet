@@ -3,6 +3,17 @@ require "../lib/tuntap/src/tuntap.cr"
 require "./sodium"
 require "./GetMeInternet/*"
 
+macro log(msg)
+  print Time.now
+  print ": "
+  if direction
+    print "P->D "
+  else
+    print "P<-D "
+  end
+  puts {{msg}}
+end
+
 module GetMeInternet
   PORT = 5431
   SERVER_IP = "10.54.31.1"
@@ -60,54 +71,79 @@ module GetMeInternet
     sequence_inc = 1u64
 
     last_route : UInt64? = nil
-    
-    loop do
-      puts "loop iteration"
-      begin
-        trans.recv_packets.each do |enc_pkt, route_id|
-          last_route = route_id
-          
-          enc_pkt.decrypt(config.key!).each do |packet|
-            #TODO: verify sequence id to prevent duplicates.
-            case packet.type
-            when GetMeInternet::Packet::PacketType::Normal
-              info = Tuntap::IpPacket.new(frame: packet.data, has_pi: false)
 
-              puts "-> #{info.size}B #{info.source_address} >> #{info.destination_address}"
+    if !server_mode
+      last_route = 0u64 #stop-gap
+    end
 
-              dev.write packet.data
-            else
-              #TODO: Deal with other packet types
+    pipe_dev_loop = spawn do
+      direction = true
+      loop do
+        begin
+          trans.recv_packets.each do |enc_pkt, route_id|
+            last_route = route_id
+            
+            enc_pkt.decrypt(config.key!).each do |packet|
+              #TODO: verify sequence id to prevent duplicates.
+              case packet.type
+              when GetMeInternet::Packet::PacketType::Normal
+                info = Tuntap::IpPacket.new(
+                  frame: packet.data,
+                  has_pi: false
+                )
+
+                log "-> #{info.size}B #{info.source_address}" +
+                    " >> #{info.destination_address}" unless info.source_address == "0.0.0.0"
+
+                dev.write packet.data
+              else
+                #TODO: Deal with other packet types
+              end
             end
           end
+          Fiber.yield
+        rescue err
+          log err
+          exit
         end
-
-        #Can't send packets if we don't have a route to send them to.
-        if !last_route.nil?
-          ip_packet = dev.read_packet
-
-          puts "<- #{ip_packet.size}B #{ip_packet.source_address} >> #{ip_packet.destination_address}"
-          
-          gmi_packet = Packet.new(
-            Packet::PacketType::Normal,
-            sequence_inc += 1,
-            ip_packet.frame
-          )
-
-          enc_packet = EncryptedPacket.encrypt(
-            gmi_packet,
-            config.key!
-          )
-
-          puts "c"
-
-          trans.send_packets([enc_packet], last_route)
-        end
-        Fiber.yield
-      rescue err
-        puts err
-        exit
       end
     end
+
+    dev_pipe_loop = spawn do
+      direction = false
+      loop do
+        begin
+          #puts "D2P: loop iteration"
+          #Can't send packets if we don't have a route to send them to.
+          inner_last_route = last_route
+          if !inner_last_route.nil?
+            ip_packet = dev.read_packet
+
+            next if ip_packet.source_address == "0.0.0.0"
+            
+            log "<- #{ip_packet.size}B #{ip_packet.source_address}" +
+                " >> #{ip_packet.destination_address}"
+            
+            gmi_packet = Packet.new(
+              Packet::PacketType::Normal,
+              sequence_inc += 1,
+              ip_packet.frame
+            )
+
+            enc_packet = EncryptedPacket.encrypt(
+              gmi_packet,
+              config.key!
+            )
+
+            trans.send_packet(enc_packet, inner_last_route)
+          end
+          Fiber.yield
+        rescue err
+          puts err
+          exit
+        end
+      end
+    end
+
   end
 end
