@@ -28,4 +28,23 @@ describe GetMeInternet::EncryptedPacket do
     enc_pkt = GetMeInternet::EncryptedPacket.encrypt(arr, key)
     enc_pkt.decrypt(key).should eq arr
   end
+
+  it "makes a packet from bytes" do
+    GetMeInternet::EncryptedPacket.from_bytes(
+      Bytes[
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, #The most secure nonce ever /s
+        0, 0, 0, 1, # Data length (1)
+        0xff # The data
+      ]
+    ).should eq GetMeInternet::EncryptedPacket.new(
+                  Bytes[0xff],
+                  Bytes[
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0
+                  ]
+                )
+  end
 end

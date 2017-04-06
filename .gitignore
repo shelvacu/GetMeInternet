@@ -5,3 +5,4 @@
 /.shards/
 config.yml
 .stfolder
+.stignore

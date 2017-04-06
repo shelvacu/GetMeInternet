@@ -11,6 +11,8 @@ targets:
     main: src/server.cr
   util:
     main: src/util.cr
+  nonce_length:
+    main: src/nonce_length.cr
 
 dependencies:
   tuntap:

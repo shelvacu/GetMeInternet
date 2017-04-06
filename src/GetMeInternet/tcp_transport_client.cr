@@ -34,5 +34,7 @@ module GetMeInternet
       res, @bytebuff = buffered_packet_recv(@conn, @bytebuff, @buff, 0u64)
       return res
     end
+
+    delegate close, to: @conn
   end
 end

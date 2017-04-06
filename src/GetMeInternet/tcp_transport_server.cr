@@ -40,6 +40,12 @@ module GetMeInternet
       @megabuff = Bytes.new(1_000_000)
     end
 
+    def close
+      @listeners.each do |port, serv|
+        serv.close
+      end
+    end
+
     def recv_packets
       res = [] of Tuple(EncryptedPacket, UInt64)
       @clients.each_index do |i|

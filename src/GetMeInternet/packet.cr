@@ -27,12 +27,20 @@ module GetMeInternet
     end
 
     def self.from_io(io : IO, dont_care = nil)
-      #TODO: always return InvalidPacketException
+      #TODO: always return InvalidPacketException instead of a variety of possible errors
       pt = PacketType.from_value io.read_bytes(UInt8, MABF)
       seq_id = io.read_bytes(UInt64, MABF)
       data_len = io.read_bytes(UInt16, MABF)
       data = Bytes.new(data_len)
       io.read_fully(data)
+      self.new(pt, seq_id, data)
+    end
+
+    def self.from_buffer(buff : Bytes)
+      pt = PacketType.from_value buff[0]
+      seq_id = buff[1,8].to_uint(0u64)
+      data_len = buff[9,4].to_uint(0u16)
+      data = buff[13,data_len]
       self.new(pt, seq_id, data)
     end
     

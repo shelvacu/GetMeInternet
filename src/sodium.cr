@@ -36,12 +36,26 @@ module Sodium
     end
     
     def decrypt(ciphertext : Bytes, nonce : Bytes, key : Bytes)
+      message = Bytes.new(ciphertext.size)
+      return decrypt_into(ciphertext, nonce, key, message,
+                          skip_message_validation: true)
+    end
+
+    def decrypt_into(ciphertext : Bytes, nonce : Bytes, key : Bytes, m : Bytes, skip_message_validation = false)
+      raise ArgumentError.new("result Bytes must be same length as ciphertext Bytes") unless ciphertext.size == result.size
       validate_key(key)
       validate_nonce(nonce)
-      raise ArgumentError.new("Invalid ciphertext") unless ciphertext[0, BOX_ZERO_BYTES].all?{|b| b == 0}
-      message = Bytes.new(ciphertext.size)
-      LibSodium.crypto_secretbox_open(message, ciphertext, ciphertext.size, nonce, key)
-      return message + ZERO_BYTES
+      validate_ciphertext(ciphertext)
+      validate_messagetext(m) unless skip_message_validation
+      res = LibSodium.crypto_secretbox_open(m, ciphertext, ciphertext.size, nonce, key)
+      if res == 0 #succesfully decrypted and validated
+        return m + ZERO_BYTES
+      elsif res == -1
+        #TODO: Deal with this better
+        raise "Invalid cryptotext!"
+      else
+        raise "This should never happen"
+      end
     end
 
     def secure_random_key
@@ -50,6 +64,14 @@ module Sodium
 
     def secure_random_nonce
       return SecureRandom.random_bytes(NONCE_BYTES)
+    end
+
+    private def validate_messagetext(m : Bytes)
+      raise ArgumentError.new("Invalid messagetext") unless m[0,ZERO_BYTES].all?{|b| b == 0}
+    end
+    
+    private def validate_ciphertext(ciphertext : Bytes)
+      raise ArgumentError.new("Invalid ciphertext") unless ciphertext[0, BOX_ZERO_BYTES].all?{|b| b == 0}
     end
     
     private def validate_key(key : Bytes)

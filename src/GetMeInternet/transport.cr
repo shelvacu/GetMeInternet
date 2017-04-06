@@ -22,9 +22,12 @@ module GetMeInternet
     # connection) should be done here.
     abstract def initialize(config : ConfigHash)
 
+    # Tear down the connection and/or server
+    abstract def close()
+
     # Receive some packets. May return an empty array.
-    # The second element in the tuple is the 'route', which in the
-    # case of TCP is which client to send to
+    # The second element in the tuple is the 'route', which (in the
+    # case of TCP) is which client to send to
     abstract def recv_packets : Array(Tuple(EncryptedPacket,UInt64))
 
     # If the transport needs to do something every tick (eg TCP
@@ -41,6 +44,22 @@ module GetMeInternet
       send_packets([pkt], route)
     end
 
+    protected def buffered_packaet_recv(
+                    io : IO,
+                    bigbuff : CircleBuff,
+                    route_id : UInt64,
+                    key : Bytes
+                  )
+      res = [] of Tuple(EncryptedPacket, UInt64)
+      len_read = bigbuff.read_from(io)
+      if bigbuff.data_size >= EncryptedPacket::HEADER_BYTE_LENGTH
+        pkt_len = EncryptedPacket::HEADER_BYTE_LENGTH
+        pkt_len += bigbuff.index_to_u32(NONCE_LENGTH)
+        if bigbuff.data_size >= pkt_len
+          epkt = EncryptedPacket.from_bytes(bigbuff)
+          pkts = epkt.decrypt_into(key, bigbuff
+        
+    
     # recieve packets, using a buffer to deal with only recieving
     # parts of a packet at a time.
     protected def buffered_packet_recv(
@@ -51,7 +70,8 @@ module GetMeInternet
                   )
       res = [] of Tuple(EncryptedPacket, UInt64)
       len_read = io.read(bigbuff)
-      # TODO: Make sure this properly deals with recieving a packet and a half from a single read
+      # TODO: Make sure this properly deals with recieving a packet
+      # and a half from a single read.
       if len_read > 0
         #puts "read #{len_read} bytes"
       end
@@ -93,7 +113,6 @@ module GetMeInternet
 
   module TransportClient
     include Transport
-
     # This is used when something needs to be sent to get packets
     # back. For example, the HTTP transport. All other transports
     # simply return nil.
