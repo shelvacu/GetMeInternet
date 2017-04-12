@@ -1,4 +1,5 @@
 require "./transport"
+require "../buffer_pair"
 
 module GetMeInternet
   class TCPTransportServer
@@ -7,7 +8,7 @@ module GetMeInternet
     @bind_addr : String
     @listen_ports : Array(UInt16)
 
-    alias ClientData = NamedTuple(sock: TCPSocket, buff: Array(UInt8))
+    alias ClientData = NamedTuple(sock: TCPSocket, bp: BufferPair)
 
     def self.name
       return "tcp"
@@ -25,6 +26,7 @@ module GetMeInternet
       @listen_ports = lp.split(",").map(&.to_u16)
       raise InvalidConfigException.new if @listen_ports.empty?
 
+      buffs_size = EncryptedPacket::MAX_SIZE*2
       @listeners = {} of UInt16 => TCPServer
       @clients = [] of ClientData
       @listen_ports.each do |port|
@@ -32,12 +34,14 @@ module GetMeInternet
         spawn do
           while client = server.accept?
             puts "Client connected"
-            @clients << {sock: client, buff: [] of UInt8}
+            @clients << {
+              sock: client, 
+              bp: BufferPair.new(buffs_size)
+            }
             Fiber.yield
           end
         end
       end
-      @megabuff = Bytes.new(1_000_000)
     end
 
     def close
@@ -46,15 +50,16 @@ module GetMeInternet
       end
     end
 
-    def recv_packets
-      res = [] of Tuple(EncryptedPacket, UInt64)
+    def recv_packets(key : Bytes) : Array(Tuple(Packet,UInt64))
+      res = [] of Tuple(Packet, UInt64)
       @clients.each_index do |i|
         cd = @clients[i] #client data
-        buff = cd[:buff]
+        buff = cd[:bp]
         sock = cd[:sock]
-        r, newbuff = buffered_packet_recv(sock, buff, @megabuff, i.to_u64)
-        res += r
-        @clients[i] = {sock: sock, buff: newbuff}
+        r = buffered_packet_recv(sock, buff, key)
+        r.each do |pkt|
+          res << {pkt, i.to_u64}
+        end
       end
       return res
     end

@@ -1,3 +1,4 @@
+require "../slice"
 module GetMeInternet
   alias ConfigHash = Hash(String, (ConfigHash | String))
 
@@ -28,13 +29,7 @@ module GetMeInternet
     # Receive some packets. May return an empty array.
     # The second element in the tuple is the 'route', which (in the
     # case of TCP) is which client to send to
-    abstract def recv_packets : Array(Tuple(EncryptedPacket,UInt64))
-
-    # If the transport needs to do something every tick (eg TCP
-    # accepting new clients) do it here.
-    def tick
-      return nil
-    end
+    abstract def recv_packets(key : Bytes) : Array(Tuple(Packet,UInt64))
 
     # Send some packets along the transport.
     abstract def send_packets(pkts : Array(EncryptedPacket),
@@ -44,70 +39,33 @@ module GetMeInternet
       send_packets([pkt], route)
     end
 
-    protected def buffered_packaet_recv(
-                    io : IO,
-                    bigbuff : CircleBuff,
-                    route_id : UInt64,
-                    key : Bytes
-                  )
-      res = [] of Tuple(EncryptedPacket, UInt64)
-      len_read = bigbuff.read_from(io)
-      if bigbuff.data_size >= EncryptedPacket::HEADER_BYTE_LENGTH
-        pkt_len = EncryptedPacket::HEADER_BYTE_LENGTH
-        pkt_len += bigbuff.index_to_u32(NONCE_LENGTH)
-        if bigbuff.data_size >= pkt_len
-          epkt = EncryptedPacket.from_bytes(bigbuff)
-          pkts = epkt.decrypt_into(key, bigbuff
-        
-    
-    # recieve packets, using a buffer to deal with only recieving
-    # parts of a packet at a time.
+    # Note: Any returned packets must be dealt with and unused
+    # by the time buffered_packet_recv is next called
     protected def buffered_packet_recv(
                     io : IO,
-                    buff : Array(UInt8),
-                    bigbuff : Bytes,
-                    route_id : UInt64
-                  )
-      res = [] of Tuple(EncryptedPacket, UInt64)
-      len_read = io.read(bigbuff)
-      # TODO: Make sure this properly deals with recieving a packet
-      # and a half from a single read.
-      if len_read > 0
-        #puts "read #{len_read} bytes"
-      end
-      newbuff = buff
-      bigbuff[0,len_read].each do |byte|
-        buff << byte
-      end
-      if buff.size >= EncryptedPacket::HEADER_BYTE_LENGTH
-        #puts "reading header"
+                    bp : BufferPair,
+                    key : Bytes
+                  ) : Array(GetMeInternet::Packet)
+      # TODO: limit to max size of one enc packet
+      bp.read_from(io, limit: nil)
+      if bp.bytes_read >= EncryptedPacket::HEADER_BYTE_LENGTH
         pkt_len = EncryptedPacket::HEADER_BYTE_LENGTH
-        # TODO: no magic value
-        length_range = (NONCE_LENGTH...NONCE_LENGTH+4)
-        pkt_len += Transport.bytes_to_u32(buff[length_range])
-        if buff.size >= pkt_len
-          #puts "reading whole encpacket"
-          # This *really* feels like it should really be optimized,
-          # but premature optimization is the root of all evil.
-          io = IO::Memory.new
-          buff[0..pkt_len].each do |byte|
-            io.write_byte byte
-          end
-          io.rewind
+        pkt_data_size = (bp.fullbuff + NONCE_LENGTH).to_uint(0u16)
+        pkt_len += pkt_data_size
+        if bp.bytes_read >= pkt_len
+          epkt = EncryptedPacket.from_bytes(bp.fullbuff)
+          leftover = bp.bytes_read - epkt.byte_size
+          bp.fullbuff[epkt.byte_size, leftover].copy_to bp.otherbuff
+          bp.otherbytesreadsetto(leftover)
+          
+          pkts = epkt.decrypt_into(key, bp.fullbuff + epkt.byte_size)
 
-          res << {EncryptedPacket.from_io(io), route_id}
-          #TODO: Catch invalid packet exceptions
-
-          newbuff = buff[pkt_len..-1]
+          # reset & swap buffers
+          bp.swap
+          return pkts
         end
       end
-      return res, newbuff
-    end
-
-    def self.bytes_to_u32(data : Array(UInt8))
-      data.reduce(0_u32) do |acc, val|
-        (acc << 8) + val
-      end
+      return [] of GetMeInternet::Packet
     end
   end
 

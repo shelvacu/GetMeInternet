@@ -80,25 +80,25 @@ module GetMeInternet
       direction = true
       loop do
         begin
-          trans.recv_packets.each do |enc_pkt, route_id|
+          trans.recv_packets(config.key!).each do |packet, route_id|
             last_route = route_id
-            
-            enc_pkt.decrypt(config.key!).each do |packet|
-              #TODO: verify sequence id to prevent duplicates.
-              case packet.type
-              when GetMeInternet::Packet::PacketType::Normal
-                info = Tuntap::IpPacket.new(
-                  frame: packet.data,
-                  has_pi: false
-                )
+            #TODO: verify sequence id to prevent duplicates.
+            case packet.type
+            when GetMeInternet::Packet::PacketType::Normal
+              info = Tuntap::IpPacket.new(
+                frame: packet.data,
+                has_pi: false
+              )
 
-                log "-> #{info.size}B #{info.source_address}" +
-                    " >> #{info.destination_address}" unless info.source_address == "0.0.0.0"
+              log "-> #{info.size}B #{info.source_address}" +
+                  " >> #{info.destination_address}" unless info.source_address == "0.0.0.0"
 
-                dev.write packet.data
-              else
-                #TODO: Deal with other packet types
-              end
+              dev.write packet.data
+            when GetMeInternet::Packet::PacketType::Null
+              # Do nothing
+            else
+              #TODO: Deal with other packet types
+              STDERR.puts "WARNING: encountered packet we can't deal with yet"
             end
           end
           Fiber.yield

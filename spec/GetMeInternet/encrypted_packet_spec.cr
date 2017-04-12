@@ -1,6 +1,5 @@
 describe GetMeInternet::EncryptedPacket do
   it "survives transport" do
-    nonce = Sodium::SecretBox.secure_random_nonce
     enc_pkt = GetMeInternet::EncryptedPacket.new(
       Bytes[1,2,3,7,3,5,2],
       Sodium::SecretBox.secure_random_nonce
@@ -9,6 +8,16 @@ describe GetMeInternet::EncryptedPacket do
     enc_pkt.to_io(io)
     io.rewind
     GetMeInternet::EncryptedPacket.from_io(io).should eq enc_pkt
+  end
+
+  it "survives serialization to and from buffer" do
+    enc_pkt = GetMeInternet::EncryptedPacket.new(
+      Bytes[1,2,3,7,3,5,2],
+      Sodium::SecretBox.secure_random_nonce
+    )
+    buff = Bytes.new(enc_pkt.byte_size)
+    enc_pkt.to_bytes(buff)
+    GetMeInternet::EncryptedPacket.from_bytes(buff).should eq enc_pkt
   end
 
   it "encrypts and decrypts multiple packets" do
@@ -35,7 +44,7 @@ describe GetMeInternet::EncryptedPacket do
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, #The most secure nonce ever /s
-        0, 0, 0, 1, # Data length (1)
+        0, 1, # Data length (1)
         0xff # The data
       ]
     ).should eq GetMeInternet::EncryptedPacket.new(

@@ -42,14 +42,14 @@ module Sodium
     end
 
     def decrypt_into(ciphertext : Bytes, nonce : Bytes, key : Bytes, m : Bytes, skip_message_validation = false)
-      raise ArgumentError.new("result Bytes must be same length as ciphertext Bytes") unless ciphertext.size == result.size
+      raise ArgumentError.new("m (result) Bytes must be same length or greater as ciphertext Bytes") unless ciphertext.size <= m.size
       validate_key(key)
       validate_nonce(nonce)
       validate_ciphertext(ciphertext)
       validate_messagetext(m) unless skip_message_validation
       res = LibSodium.crypto_secretbox_open(m, ciphertext, ciphertext.size, nonce, key)
       if res == 0 #succesfully decrypted and validated
-        return m + ZERO_BYTES
+        return m[0, ciphertext.size] + ZERO_BYTES
       elsif res == -1
         #TODO: Deal with this better
         raise "Invalid cryptotext!"

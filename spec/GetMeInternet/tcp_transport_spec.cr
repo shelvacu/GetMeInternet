@@ -1,4 +1,7 @@
 require "spec"
+#require "socket"
+#require "../../src/*"
+#require "../../src/GetMeInternet/*"
 
 describe GetMeInternet do
   it "Pipes packets over TCP" do
@@ -18,7 +21,7 @@ describe GetMeInternet do
       }
     )
 
-    #sleep(1)
+    sleep(1)
 
     testpkt = GetMeInternet::Packet.new(
       GetMeInternet::Packet::PacketType::Normal,
@@ -30,10 +33,13 @@ describe GetMeInternet do
 
     client.send_packets([enc_testpkt])
 
-    rec_enc_pkts = serv.recv_packets
+    rec_pkts = [] of GetMeInternet::Packet
 
-    rec_enc_pkts.size.should eq 1
+    sleep(1)
+    rec_pkts = serv.recv_packets(key)
 
-    rec_enc_pkts.first[0].decrypt(key).first.should eq testpkt
+    rec_pkts.size.should eq 1
+
+    rec_pkts.first[0].should eq testpkt
   end
 end

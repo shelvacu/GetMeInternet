@@ -1,4 +1,5 @@
 require "./transport"
+require "../buffer_pair"
 
 module GetMeInternet
   class TCPTransportClient
@@ -15,8 +16,7 @@ module GetMeInternet
       @server_addr = config["server_addr"]
       @port = config["port"].to_u16
       @conn = TCPSocket.new(@server_addr, @port)
-      @buff = Bytes.new(1_000_000) # 2 hard things...
-      @bytebuff = [] of UInt8
+      @bp = BufferPair.new(EncryptedPacket::MAX_SIZE*2)
     end
 
     def send_packets(pkts : Array(EncryptedPacket), id : UInt64)
@@ -30,9 +30,10 @@ module GetMeInternet
       end
     end
 
-    def recv_packets
-      res, @bytebuff = buffered_packet_recv(@conn, @bytebuff, @buff, 0u64)
-      return res
+    def recv_packets(key : Bytes) : Array(Tuple(Packet,UInt64))
+      return buffered_packet_recv(@conn, @bp, key).map do |pkt|
+        {pkt, 0u64}
+      end
     end
 
     delegate close, to: @conn

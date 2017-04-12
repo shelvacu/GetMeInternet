@@ -22,6 +22,7 @@ module GetMeInternet
     enum PacketType
       Normal
       Ping
+      Pong
       Null
       Stream #Not currently used
     end
@@ -36,11 +37,14 @@ module GetMeInternet
       self.new(pt, seq_id, data)
     end
 
-    def self.from_buffer(buff : Bytes)
+    def self.from_bytes(buff : Bytes)
+      # TODO: Magic values
+      raise "buff not big enough, only #{buff.size} bytes" unless buff.size >= 11
       pt = PacketType.from_value buff[0]
       seq_id = buff[1,8].to_uint(0u64)
-      data_len = buff[9,4].to_uint(0u16)
-      data = buff[13,data_len]
+      data_len = buff[9,2].to_uint(0u16)
+      raise "buff not big enough for data" unless buff.size >= 11+data_len
+      data = buff[11,data_len]
       self.new(pt, seq_id, data)
     end
     
@@ -63,8 +67,12 @@ module GetMeInternet
       io.write(@data)
     end
 
-    def size
+    def byte_size
       HEADER_BYTE_LENGTH + @data.size
+    end
+
+    def size
+      byte_size
     end
 
     getter :type
