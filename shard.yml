@@ -13,6 +13,8 @@ targets:
     main: src/util.cr
   nonce_length:
     main: src/nonce_length.cr
+  ping:
+    main: src/ping.cr
 
 dependencies:
   tuntap:
