@@ -2,6 +2,7 @@ require "socket"
 require "../lib/tuntap/src/tuntap.cr"
 require "./sodium"
 require "./GetMeInternet/*"
+require "./benchmark"
 
 macro log(msg)
   print Time.now
@@ -80,25 +81,29 @@ module GetMeInternet
       direction = true
       loop do
         begin
-          trans.recv_packets(config.key!).each do |packet, route_id|
-            last_route = route_id
-            #TODO: verify sequence id to prevent duplicates.
-            case packet.type
-            when GetMeInternet::Packet::PacketType::Normal
-              info = Tuntap::IpPacket.new(
-                frame: packet.data,
-                has_pi: false
-              )
+          Benchmark.benchmark("pipe->dev outer") do
+            trans.recv_packets(config.key!).each do |packet, route_id|
+              Benchmark.benchmark("pipe->dev inner") do
+                last_route = route_id
+                #TODO: verify sequence id to prevent duplicates.
+                case packet.type
+                when GetMeInternet::Packet::PacketType::Normal
+                  info = Tuntap::IpPacket.new(
+                    frame: packet.data,
+                    has_pi: false
+                  )
 
-              log "-> #{info.size}B #{info.source_address}" +
-                  " >> #{info.destination_address}" unless info.source_address == "0.0.0.0"
+                  log "-> #{info.size}B #{info.source_address}" +
+                      " >> #{info.destination_address}" unless info.source_address == "0.0.0.0"
 
-              dev.write packet.data
-            when GetMeInternet::Packet::PacketType::Null
-              # Do nothing
-            else
-              #TODO: Deal with other packet types
-              STDERR.puts "WARNING: encountered packet we can't deal with yet"
+                  dev.write packet.data
+                when GetMeInternet::Packet::PacketType::Null
+                # Do nothing
+                else
+                  #TODO: Deal with other packet types
+                  STDERR.puts "WARNING: encountered packet we can't deal with yet"
+                end
+              end
             end
           end
           Fiber.yield
@@ -115,27 +120,31 @@ module GetMeInternet
         begin
           #puts "D2P: loop iteration"
           #Can't send packets if we don't have a route to send them to.
-          inner_last_route = last_route
-          if !inner_last_route.nil?
-            ip_packet = dev.read_packet
+          Benchmark.benchmark("dev->pipe outer") do
+            inner_last_route = last_route
+            if !inner_last_route.nil?
+              ip_packet = dev.read_packet
 
-            next if ip_packet.source_address == "0.0.0.0"
-            
-            log "<- #{ip_packet.size}B #{ip_packet.source_address}" +
-                " >> #{ip_packet.destination_address}"
-            
-            gmi_packet = Packet.new(
-              Packet::PacketType::Normal,
-              sequence_inc += 1,
-              ip_packet.frame
-            )
+              Benchmark.benchmark("dev->pipe inner") do
+                #next if ip_packet.source_address == "0.0.0.0"
+                
+                log "<- #{ip_packet.size}B #{ip_packet.source_address}" +
+                    " >> #{ip_packet.destination_address}" unless ip_packet.source_address == "0.0.0.0"
+                
+                gmi_packet = Packet.new(
+                  Packet::PacketType::Normal,
+                  sequence_inc += 1,
+                  ip_packet.frame
+                )
 
-            enc_packet = EncryptedPacket.encrypt(
-              gmi_packet,
-              config.key!
-            )
+                enc_packet = EncryptedPacket.encrypt(
+                  gmi_packet,
+                  config.key!
+                )
 
-            trans.send_packet(enc_packet, inner_last_route)
+                trans.send_packet(enc_packet, inner_last_route.not_nil!)
+              end
+            end
           end
           Fiber.yield
         rescue err
