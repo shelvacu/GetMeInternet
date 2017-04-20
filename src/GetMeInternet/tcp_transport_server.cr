@@ -44,6 +44,27 @@ module GetMeInternet
       end
     end
 
+    def ios_to_select_on
+      client_ios = @clients.map(&[:sock])
+      return {read: client_ios + @listeners.values,
+              write: client_ios}
+    end
+
+    def accept_client_on(serv)
+      client = serv.accept
+      puts "Client connected"
+      @clients << {
+        sock: client, 
+        bp: BufferPair.new(buffs_size)
+      }
+    end
+
+#    def ready_read(io)
+#      if @listeners.values.include? io
+#        accept_client_on(io)
+#      else
+        
+
     def close
       @listeners.each do |port, serv|
         serv.close

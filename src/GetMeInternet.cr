@@ -48,6 +48,7 @@ module GetMeInternet
     config.key!
 
     dev = Tuntap::Device.open(
+      device_name: config.device_name,
       flags: LibC::IfReqFlags::Tun | LibC::IfReqFlags::NoPi
     )
     dev.up!
