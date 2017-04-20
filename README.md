@@ -8,7 +8,23 @@ http://sites.inka.de/bigred/devel/tcp-tcp.html
 
 ## Installation
 
-TODO: Write installation instructions here
+01. [Install](https://crystal-lang.org/docs/installation/index.html) crystal and shards (although they usually come together)
+02. Install the sodium development libraries eg. on arch linux `sudo pacman -S libsodium`
+03. Install crystal dependencies
+
+        crystal deps
+
+04. Compile
+
+        shards build
+
+	Debugging version
+
+		shards build -d
+
+	Release version (full compiler optimizations)
+
+		shards build --release
 
 ## Usage
 
@@ -29,9 +45,13 @@ TODO: Write usage instructions here
     start shill BLACKLISTED_DEVICEDS=tun0
   
 
-## Development
+First, you must select a Pre-shared Key for use between the client and server. 
+Run `bin/util` to generate a key, then copy the config.yml securely to the other end.
 
-TODO: Write development instructions here
+
+The server `bin/server` currently takes no arguments, and listens on port 5431. The
+client `bin/client` takes one argument, the ip address of the server.
+
 
 ## Contributing
 

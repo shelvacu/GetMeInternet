@@ -67,7 +67,11 @@ module Sodium
     end
 
     private def validate_messagetext(m : Bytes)
-      raise ArgumentError.new("Invalid messagetext") unless m[0,ZERO_BYTES].all?{|b| b == 0}
+      #raise ArgumentError.new("Invalid messagetext") unless m[0,ZERO_BYTES].all?{|b| b == 0}
+      raise ArgumentError.new("Invalid messagetext") unless m.size >= ZERO_BYTES
+      ZERO_BYTES.times do |i|
+        m[i] = 0u8
+      end
     end
     
     private def validate_ciphertext(ciphertext : Bytes)

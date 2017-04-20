@@ -1,7 +1,7 @@
 require "./mabf"
 
 module GetMeInternet
-  class Packet
+  struct Packet
     # Packet format: (network endian)
     # * Packet type (1 byte)
     #   * Normal packet, containing an IP packet

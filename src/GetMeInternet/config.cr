@@ -6,9 +6,16 @@ module GetMeInternet
       hexkey: {
         type: String,
         nilable: true
+      },
+      device_name: {
+        type: String,
+        nilable: true
       }
     )
 
+    getter device_name
+    setter device_name
+    
     @key : Bytes?
 
     def self.autoload

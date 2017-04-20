@@ -1,7 +1,7 @@
 require "./mabf"
 
 module GetMeInternet
-  class EncryptedPacket
+  struct EncryptedPacket
     # Packet format
     # * nonce (Sodium::SecretBox::NONCE_BYTES in size)
     # * data length (UInt16)
