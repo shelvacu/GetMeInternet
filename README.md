@@ -30,19 +30,19 @@ http://sites.inka.de/bigred/devel/tcp-tcp.html
 
 TODO: Write usage instructions here
 * prereqs:
-  --crystal https://crystal-lang.org/
-  --libsodium-dev  (a crypto lib)
-  --libxml2-dev
-  --libyaml-dev
-  --shards (it's like "make")
-  --fork the project on github
-  --"shards build" to build
+  * crystal https://crystal-lang.org/
+  * libsodium-dev  (a crypto lib)
+  * libxml2-dev
+  * libyaml-dev
+  * shards (it's like "make")
+  * fork the project on github
+  * "shards build" to build
 
 * chromium will stop tun0 about 2 seconds after startup
   >> workaround <<: in crosh shell,
    *sudo* the following
-    stop shill
-    start shill BLACKLISTED_DEVICEDS=tun0
+    * stop shill
+    * start shill BLACKLISTED_DEVICEDS=tun0
   
 
 First, you must select a Pre-shared Key for use between the client and server. 
