@@ -28,9 +28,29 @@ http://sites.inka.de/bigred/devel/tcp-tcp.html
 
 ## Usage
 
-First, you must select a Pre-shared Key for use between the client and server. Run `bin/util` to generate a key, then copy the config.yml securely to the other end.
+TODO: Write usage instructions here
+* prereqs:
+  --crystal https://crystal-lang.org/
+  --libsodium-dev  (a crypto lib)
+  --libxml2-dev
+  --libyaml-dev
+  --shards (it's like "make")
+  --fork the project on github
+  --"shards build" to build
 
-The server `bin/server` currently takes no arguments, and listens on port 5431. The client `bin/client` takes one argument, the ip address of the server.
+* chromium will stop tun0 about 2 seconds after startup
+  >> workaround <<: in crosh shell,
+   *sudo* the following
+    stop shill
+    start shill BLACKLISTED_DEVICEDS=tun0
+  
+
+First, you must select a Pre-shared Key for use between the client and server. 
+Run `bin/util` to generate a key, then copy the config.yml securely to the other end.
+
+
+The server `bin/server` currently takes no arguments, and listens on port 5431. The
+client `bin/client` takes one argument, the ip address of the server.
 
 
 ## Contributing
