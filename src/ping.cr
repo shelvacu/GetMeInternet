@@ -1,4 +1,5 @@
 require "socket"
+require "./monotonic"
 if ARGV.size == 1
   server_mode = false
   server_addr = ARGV.first
@@ -25,7 +26,7 @@ recv_loop = spawn do
         sock.puts "PO"+line[2..-1]
         sock.flush
       elsif line.starts_with?("PONG")
-        puts Time.new.epoch_ms - line[4..-1].to_u64
+        puts Monotonic.time - line[4..-1].to_u64
       end
     end
     Fiber.yield
@@ -34,7 +35,7 @@ end
 
 send_loop = spawn do
   loop do
-    sock.puts "PING#{Time.new.epoch_ms}"
+    sock.puts "PING#{Monotonic.time}"
     sock.flush
     sleep 1
   end
