@@ -22,6 +22,6 @@ dependencies:
   tuntap:
     github: Papierkorb/tuntap
 
-crystal: 0.20.3
+crystal: 0.22.0
 
 license: AGPL
