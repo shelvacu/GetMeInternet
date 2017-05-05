@@ -1,6 +1,6 @@
 require "./GetMeInternet"
 
-if ARGV[0].blank? || {"-h","--help","-?"}.includes? ARGV[0]
+if ARGV.empty? || {"-h","--help","-?"}.includes? ARGV[0]
   puts "Usage: client {server-address}"
   exit
 end

@@ -29,15 +29,15 @@ module GetMeInternet
       server_mode = true
       puts "Waiting for connection"
       #socket = TCPServer.new("0.0.0.0", PORT).accept
-      trans = TCPTransportServer.new(
+      trans = UDPTransportServer.new(
         {
-          "listen_ports" => "5431"
+          "port" => "5431"
         }
       )
     else
       server_mode = false
       #socket = TCPSocket.new(server_address, PORT)
-      trans = TCPTransportClient.new(
+      trans = UDPTransportClient.new(
         {
           "server_addr" => server_address,
           "port" => "5431"
@@ -99,7 +99,7 @@ module GetMeInternet
 
                   dev.write packet.data
                 when GetMeInternet::Packet::PacketType::Null
-                # Do nothing
+                  # Do nothing
                 else
                   #TODO: Deal with other packet types
                   STDERR.puts "WARNING: encountered packet we can't deal with yet"

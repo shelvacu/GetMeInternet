@@ -9,14 +9,16 @@ http://sites.inka.de/bigred/devel/tcp-tcp.html
 ## Installation
 
 01. [Install](https://crystal-lang.org/docs/installation/index.html) crystal and shards (although they usually come together)
-02. Install the sodium development libraries eg. on arch linux `sudo pacman -S libsodium`
+02. Install the sodium development libraries
+    * for arch linux `sudo pacman -S libsodium`
+    * for debian/ubuntu `sudo apt install libsodium-dev`
 03. Install crystal dependencies
 
         crystal deps
 
 04. Compile
 
-        shards build
+		shards build
 
 	Debugging version
 
@@ -52,6 +54,13 @@ Run `bin/util` to generate a key, then copy the config.yml securely to the other
 The server `bin/server` currently takes no arguments, and listens on port 5431. The
 client `bin/client` takes one argument, the ip address of the server.
 
+## Security notes
+
+For simplicity and connect time reduction, this program uses symmetric cryptography with a single pre-shared key, of which the client and server both have a copy. This is used for both encrypting and authenticating.
+
+Currently, there is no mechanism in place to prevent replay attacks. Therefor, this software should not yet be considered secure.
+
+Furthermore, no formal review of this code's security has been done, and there likely are more security-related problems that are unknown.
 
 ## Contributing
 
@@ -63,4 +72,4 @@ client `bin/client` takes one argument, the ip address of the server.
 
 ## Contributors
 
-- [shelvacu](https://github.com/shelvacu) Shelvacu - creator, maintainer
+- [Shelvacu](https://github.com/shelvacu) - creator, maintainer

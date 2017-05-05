@@ -5,7 +5,7 @@ module GetMeInternet
     
     def initialize(config : ConfigHash)
       @sock = UDPSocket.new
-      @sock.connect config["server"].not_nil!, config["port"].to_u16
+      @sock.connect config["server_addr"].not_nil!, config["port"].to_u16
     end
 
     delegate close, to: @sock

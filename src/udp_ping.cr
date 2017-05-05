@@ -9,7 +9,7 @@ end
 
 sock = UDPSocket.new
 if server_mode
-  sock.bind "localhost", 5431
+  sock.bind "0.0.0.0", 5431
   #wait for a message
   puts "waiting for message"
   _, client_addr = sock.receive
