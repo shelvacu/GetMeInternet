@@ -28,14 +28,14 @@ module GetMeInternet
 
       buffs_size = EncryptedPacket::MAX_SIZE*2
       @listeners = {} of UInt16 => TCPServer
-      @clients = [] of ClientData
+      @clients = {} of Int32 => ClientData
       @listen_ports.each do |port|
         @listeners[port] = server = TCPServer.new(@bind_addr, port)
         spawn do
           while client = server.accept?
             puts "Client connected"
-            @clients << {
-              sock: client, 
+            @clients[client.fd] = {
+              sock: client,
               bp: BufferPair.new(buffs_size)
             }
             Fiber.yield
@@ -45,7 +45,7 @@ module GetMeInternet
     end
 
     def ios_to_select_on
-      client_ios = @clients.map(&[:sock])
+      client_ios = @clients.keys
       return {read: client_ios + @listeners.values,
               write: client_ios}
     end
@@ -53,17 +53,25 @@ module GetMeInternet
     def accept_client_on(serv)
       client = serv.accept
       puts "Client connected"
-      @clients << {
-        sock: client, 
+      @clients[client.fd] = {
+        sock: client,
         bp: BufferPair.new(buffs_size)
       }
     end
 
-#    def ready_read(io)
-#      if @listeners.values.include? io
-#        accept_client_on(io)
-#      else
-        
+    def ready_read(io)
+      if @listeners.has_value? io
+        accept_client_on(io)
+      elsif @client.has_key? io.fd
+        c = @client[io.fd]
+        sock = c[:sock]
+        buff = c[:bp]
+        r = buffered_packet_recv(sock, buff, key)
+        deal_with_these_packets(r)
+      else
+        raise "ready_read called on invalid io"
+      end
+    end 
 
     def close
       @listeners.each do |port, serv|
@@ -73,21 +81,20 @@ module GetMeInternet
 
     def recv_packets(key : Bytes) : Array(Tuple(Packet,UInt64))
       res = [] of Tuple(Packet, UInt64)
-      @clients.each_index do |i|
-        cd = @clients[i] #client data
-        buff = cd[:bp]
+      @clients.each do |fd, cd|
         sock = cd[:sock]
+        buff = cd[:bp]
         r = buffered_packet_recv(sock, buff, key)
         r.each do |pkt|
-          res << {pkt, i.to_u64}
+          res << {pkt, fd.to_u64}
         end
       end
       return res
     end
 
     def send_packets(pkts : Array(EncryptedPacket), route : UInt64)
-      raise ArgumentError.new("Invalid route id #{route}") if @clients.size <= route
-      sock = @clients[route][:sock]
+      raise ArgumentError.new("Invalid route id #{route}") unless @clients.has_key?(route.to_i32)
+      sock = @clients[route.to_i32][:sock]
       pkts.each do |pkt|
         pkt.to_io(sock)
       end

@@ -76,8 +76,15 @@ module GetMeInternet
 
     if !server_mode
       last_route = 0u64 #stop-gap
-    end
 
+      send_null_packet = spawn do  
+        trans.send_packet(EncryptedPacket.encrypt(
+                           Packet.new(Packet::PacketType::Null, (sequence_inc+=1), Bytes.new(0)),
+                           config.key!
+                         ), last_route.not_nil!)
+      end
+    end
+      
     pipe_dev_loop = spawn do
       direction = true
       loop do

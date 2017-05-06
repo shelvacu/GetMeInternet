@@ -1,0 +1,4 @@
+When: tun-device readable, packet buffer A not full
+  read from tun-device, potentially put packets in packet buffer
+When: packet buffer A not empty, pipe writable
+  
