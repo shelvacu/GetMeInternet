@@ -16,15 +16,21 @@ module GetMeInternet
     def recv_packets(key) : Array(Tuple(Packet,UInt64))
       # TODO: use the same buffer throughout instead of a new one
       # every time
-      message, client_addr = @sock.receive
+      buff = Bytes.new(65535)
+      len, client_addr = @sock.receive(buff)
+
+      # this client_add to route translation should be factored out at least into separate functions
+      route = client_addr.address_as_u32 + (client_addr.port.to_u64 << 32)
       
-      pkt = EncryptedPacket.from_bytes(message)
-      return [{pkt.decrypt(key), client_addr.address_as_u32.to_u64}]
+      pkt = EncryptedPacket.from_bytes(buff[0,len])
+      return pkt.decrypt(key).map{|v| {v, 0u64}}
     end
 
     def send_single_packet(pkt : EncryptedPacket,
                            route : UInt64)
-      @sock.send(pkt.to_bytes, Socket::IPAddress.new(route.to_u32))
+      port = (route >> 32).to_u16
+      
+      @sock.send(pkt.to_bytes, Socket::IPAddress.new(route.to_u32, port))
     end
   end
 end

@@ -99,6 +99,11 @@ module GetMeInternet
       buff[NONCE_LENGTH    ] = (@ciphertext.size >> 8).to_u8
       buff[NONCE_LENGTH + 1] = @ciphertext.size.to_u8
       @ciphertext.copy_to(buff + HEADER_BYTE_LENGTH)
+      return buff
+    end
+
+    def to_bytes
+      return self.to_bytes(Bytes.new(self.byte_size))
     end
 
     def ==(other : EncryptedPacket)
