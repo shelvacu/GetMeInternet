@@ -77,6 +77,12 @@ module GetMeInternet
     def ask_for_more
       return nil
     end
+
+    # Determine if the transport is still connected. If this returns
+    # false, then any packet sent at this moment will certainly fail.
+    # Some transports such as UDPTransport do not have a connection
+    # state, and will always return true.
+    abstract def connected? : Bool
   end
 
   module TransportServer

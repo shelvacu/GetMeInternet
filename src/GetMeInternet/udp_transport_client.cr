@@ -5,7 +5,10 @@ module GetMeInternet
     
     def initialize(config : ConfigHash)
       @sock = UDPSocket.new
-      @sock.connect config["server_addr"].not_nil!, config["port"].to_u16
+      @sock.connect(
+        config["server_addr"].not_nil!,
+        config["port"].to_u16
+      )
     end
 
     delegate close, to: @sock
@@ -21,8 +24,14 @@ module GetMeInternet
     end
 
     def send_single_packet(pkt, route)
-      raise "Route is not used but was unexpected value #{route}" unless route == 0u64
+      unless route == 0u64
+        raise "Route is not used but was unexpected value #{route}"
+      end
       @sock.send pkt.to_bytes
+    end
+
+    def connected?
+      return true
     end
   end
 end

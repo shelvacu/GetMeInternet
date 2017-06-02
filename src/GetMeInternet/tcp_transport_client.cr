@@ -37,5 +37,9 @@ module GetMeInternet
     end
 
     delegate close, to: @conn
+
+    def connected?
+      !@conn.closed?
+    end
   end
 end
