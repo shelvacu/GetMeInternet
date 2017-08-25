@@ -52,6 +52,7 @@ module GetMeInternet
                    @seq_id : UInt64,
                    @data : Bytes)
       raise ArgumentError.new("data is too big") if @data.size > 65535
+      @ip_packet = Tuntap::IpPacket.new(@data)
     end
 
     def ==(other : Packet)
@@ -74,6 +75,9 @@ module GetMeInternet
     def size
       byte_size
     end
+
+    delegate source_address, destination_address, to: @ip_packet
+    delegate tos, to: @ip_packet.ipv4
 
     getter :type
     getter :seq_id
