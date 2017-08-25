@@ -1,5 +1,5 @@
 require "socket"
-require "../lib/tuntap/src/tuntap.cr"
+require "tuntap"
 require "./sodium"
 require "./GetMeInternet/*"
 require "./benchmark"
